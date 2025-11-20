@@ -1,6 +1,7 @@
 import os
 import requests
 import re
+import json
 from newspaper import Article
 from transformers import pipeline
 from openai import OpenAI
@@ -121,7 +122,10 @@ def openai_score(text):
     # Build the prompt asking OpenAI to classify sentiment and provide a numeric score
     prompt = (
         "Classify the sentiment of this text as Positive, Neutral, or Negative. "
-        "Also provide a numeric score between -1 and 1.\n\n" + text
+        "Also provide a numeric score between -1 and 1.\n"
+        "Respond ONLY in this JSON format exactly:\n"
+        "{\"sentiment\": \"Positive|Neutral|Negative\", \"score\": <number between -1 and 1>}.\n\n"
+        + text
     )
 
     try:
@@ -130,16 +134,23 @@ def openai_score(text):
             model="gpt-5-nano",
             input=prompt
         )
-        msg = response.output_text.strip()
+        raw = response.output_text.strip()
 
-        # Pull out the numeric value from the model's response
-        numeric = extract_numeric_from_openai(msg)
+        # Try to load JSON safely
+        try:
+            data = json.loads(raw)
+            sentiment = data.get("sentiment", "Neutral")
+            score = float(data.get("score", 0.0))
+        except:
+            sentiment = "Neutral"
+            score = 0.0
 
-        return msg, numeric
+        return sentiment, score
 
     # If the API call fails, return a default neutral result
     except:
         return "OpenAI sentiment unavailable.", 0.0
+
 
 # --------------------------------------------------------------
 # Run Sentiment Analysis on Stock Articles
@@ -175,7 +186,7 @@ def analyze_stock(ticker):
             "url": url,
             "text_sample": text[:250],
             "hf": hf_result,
-            "openai_raw": openai_raw,
+            "openai_sentiment": openai_raw,
             "openai_num": openai_num,
         })
 
@@ -248,12 +259,12 @@ def main():
         print("URL:", entry["url"])
 
         # Hugging Face
-        hf_label = entry["hf"]["label"]
+        hf_label = entry["hf"]["label"].capitalize()
         hf_num = round(entry["hf"]["numeric"], 3)
         print(f"Hugging Face Sentiment: {hf_label} ({hf_num})")
 
         # OpenAI
-        ai_raw = entry["openai_raw"]
+        ai_raw = entry["openai_sentiment"]
         ai_num = round(entry["openai_num"], 3)
         print(f"OpenAI Sentiment: {ai_raw} ({ai_num})")
 
