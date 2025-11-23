@@ -78,11 +78,11 @@ def classify_trend(close_series):
 
     # simple rule to decide trend
     if pct_change > 5:
-        label = "rising"
+        label = "Rising"
     elif pct_change < -5:
-        label = "falling"
+        label = "Falling"
     else:
-        label = "stagnant"
+        label = "Stagnant"
 
     return label, pct_change
 
@@ -283,7 +283,6 @@ def analyze_stock(ticker):
         results.append({
             "title": title,
             "url": url,
-            "text_sample": text[:250],
             "hf": hf_result,
             "openai_sentiment": openai_raw,
             "openai_num": openai_num,
@@ -381,7 +380,7 @@ def main():
         nv = entry["nltk_vader"]
         nv_label = nv["label"].capitalize()
         nv_num = round(nv["numeric"], 3)
-        print(f"NLTK VADER (Article): {nv_label} ({nv_num})")
+        print(f"NLTK VADER: {nv_label} ({nv_num})")
 
         print("---------------------------------------")
 

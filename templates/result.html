@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Results for {{ ticker }}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+</head>
+<body>
+    <div class="container">
+
+        <div class="card">
+            <h1>{{ stock_name }} ({{ ticker }})</h1>
+
+            <div class="summary-grid">
+                <div class="summary-box">
+                    <h2>Price trend (3 months)</h2>
+                    <p class="summary-value">{{ trend_label|capitalize }}</p>
+                    <p class="summary-sub">{{ "%.2f"|format(pct_change) }}%</p>
+                </div>
+
+                <div class="summary-box">
+                    <h2>Overall news sentiment</h2>
+                    {% if no_news %}
+                        <p class="summary-value">No recent news</p>
+                    {% else %}
+                        <p class="summary-value">{{ overall_label }}</p>
+                        <p class="summary-sub">{{ "%.3f"|format(overall_score) }}</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        {% if no_news %}
+            <div class="card">
+                <p>We could not find any recent news articles for this stock.</p>
+            </div>
+        {% else %}
+            <div class="card">
+                <h2>Article details</h2>
+
+                {% for a in articles %}
+                    <div class="article-card">
+                        <h3>{{ a.title }}</h3>
+                        <p class="article-link">
+                            <a href="{{ a.url }}" target="_blank">Open article</a>
+                        </p>
+                        <p class="article-text">
+                            <strong>Text sample:</strong> {{ a.text_sample }}...
+                        </p>
+
+                        <div class="sentiment-grid">
+                            <div class="sentiment-box">
+                                <span class="sentiment-label">Hugging Face</span>
+                                <span class="sentiment-value">
+                                    {{ a.hf.label.capitalize() }}
+                                    ({{ "%.3f"|format(a.hf.numeric) }})
+                                </span>
+                            </div>
+
+                            <div class="sentiment-box">
+                                <span class="sentiment-label">OpenAI</span>
+                                <span class="sentiment-value">
+                                    {{ a.openai_sentiment }}
+                                    ({{ "%.3f"|format(a.openai_num) }})
+                                </span>
+                            </div>
+
+                            <div class="sentiment-box">
+                                <span class="sentiment-label">NLTK VADER</span>
+                                <span class="sentiment-value">
+                                    {{ a.nltk_vader.label.capitalize() }}
+                                    ({{ "%.3f"|format(a.nltk_vader.numeric) }})
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        {% endif %}
+
+        <div class="card card-footer">
+            <a href="/" class="btn btn-secondary">Analyze another stock</a>
+        </div>
+    </div>
+</body>
+</html>
