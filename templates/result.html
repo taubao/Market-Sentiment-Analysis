@@ -2,85 +2,115 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Results for {{ ticker }}</title>
+    <title>Stock Sentiment Results</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
 </head>
+
 <body>
-    <div class="container">
+<div class="container">
 
-        <div class="card">
-            <h1>{{ stock_name }} ({{ ticker }})</h1>
+    <h1>Sentiment Results</h1>
 
-            <div class="summary-grid">
-                <div class="summary-box">
-                    <h2>Price trend (3 months)</h2>
-                    <p class="summary-value">{{ trend_label|capitalize }}</p>
-                    <p class="summary-sub">{{ "%.2f"|format(pct_change) }}%</p>
-                </div>
+    <p class="subtitle">
+        Showing recent news sentiment for <strong>{{ stock_name }}</strong> ({{ ticker }})
+    </p>
 
-                <div class="summary-box">
-                    <h2>Overall news sentiment</h2>
-                    {% if no_news %}
-                        <p class="summary-value">No recent news</p>
-                    {% else %}
-                        <p class="summary-value">{{ overall_label }}</p>
-                        <p class="summary-sub">{{ "%.3f"|format(overall_score) }}</p>
-                    {% endif %}
-                </div>
+    <!-- SUMMARY BOXES -->
+    <div class="summary-row">
+
+        <!-- PRICE TREND (LEFT) -->
+        <div class="summary-box">
+            <div class="summary-label">Price Trend (3 months)</div>
+            <div class="summary-value">
+                {{ trend_label }} ({{ "%.2f"|format(pct_change) }}%)
             </div>
         </div>
 
-        {% if no_news %}
-            <div class="card">
-                <p>We could not find any recent news articles for this stock.</p>
+        <!-- OVERALL SENTIMENT (RIGHT) -->
+        <div class="summary-box">
+            <div class="summary-label">Overall Sentiment</div>
+            <div class="summary-value">
+                {{ overall_label }} ({{ "%.3f"|format(overall_score) }})
             </div>
-        {% else %}
-            <div class="card">
-                <h2>Article details</h2>
+        </div>
 
-                {% for a in articles %}
-                    <div class="article-card">
-                        <h3>{{ a.title }}</h3>
-                        <p class="article-link">
-                            <a href="{{ a.url }}" target="_blank">Open article</a>
-                        </p>
-                        <p class="article-text">
-                            <strong>Text sample:</strong> {{ a.text_sample }}...
-                        </p>
+    </div>
 
-                        <div class="sentiment-grid">
-                            <div class="sentiment-box">
-                                <span class="sentiment-label">Hugging Face</span>
-                                <span class="sentiment-value">
-                                    {{ a.hf.label.capitalize() }}
-                                    ({{ "%.3f"|format(a.hf.numeric) }})
-                                </span>
-                            </div>
+    <hr>
 
-                            <div class="sentiment-box">
-                                <span class="sentiment-label">OpenAI</span>
-                                <span class="sentiment-value">
-                                    {{ a.openai_sentiment }}
-                                    ({{ "%.3f"|format(a.openai_num) }})
-                                </span>
-                            </div>
+    {% if articles %}
+        {% for a in articles %}
+        <div class="article-card">
 
-                            <div class="sentiment-box">
-                                <span class="sentiment-label">NLTK VADER</span>
-                                <span class="sentiment-value">
-                                    {{ a.nltk_vader.label.capitalize() }}
-                                    ({{ "%.3f"|format(a.nltk_vader.numeric) }})
-                                </span>
-                            </div>
+            <h2 class="article-title">{{ a.title }}</h2>
+
+            <p><a href="{{ a.url }}" target="_blank">Open article</a></p>
+
+            <p class="overall-line">
+                <strong>Sentiment:</strong>
+                {{ a.combined_label }} ({{ "%.3f"|format(a.combined_score) }})
+
+                <button class="details-btn" onclick="toggleDetails(this)">
+                    More details ▼
+                </button>
+            </p>
+
+            <div class="details-box" style="display: none;">
+
+                <div class="model-row">
+
+                    <div class="model-box">
+                        <div class="model-title">HuggingFace</div>
+                        <div class="model-value">
+                            {{ a.hf.label }} ({{ "%.3f"|format(a.hf.numeric) }})
                         </div>
                     </div>
-                {% endfor %}
-            </div>
-        {% endif %}
 
-        <div class="card card-footer">
-            <a href="/" class="btn btn-secondary">Analyze another stock</a>
+                    <div class="model-box">
+                        <div class="model-title">OpenAI</div>
+                        <div class="model-value">
+                            {{ a.openai_sentiment }} ({{ "%.3f"|format(a.openai_num) }})
+                        </div>
+                    </div>
+
+                    <div class="model-box">
+                        <div class="model-title">NLTK VADER</div>
+                        <div class="model-value">
+                            {{ a.nltk_vader.label }} ({{ "%.3f"|format(a.nltk_vader.numeric) }})
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+
+            <hr>
         </div>
+        {% endfor %}
+    {% else %}
+        <p>No articles found.</p>
+    {% endif %}
+
+    <!-- SEARCH ANOTHER STOCK BUTTON -->
+    <div class="back-btn-wrapper">
+        <a href="/" class="btn btn-primary back-btn">Search another stock</a>
     </div>
+
+
+</div>
+
+<script>
+function toggleDetails(btn) {
+    const box = btn.parentElement.nextElementSibling;
+
+    if (box.style.display === "none") {
+        box.style.display = "block";
+        btn.textContent = "Hide details ▲";
+    } else {
+        box.style.display = "none";
+        btn.textContent = "More details ▼";
+    }
+}
+</script>
+
 </body>
 </html>

@@ -8,17 +8,15 @@ from newspaper import Article
 from transformers import pipeline
 from openai import OpenAI
 from dotenv import load_dotenv
-
-# NLTK VADER
 import nltk
 from nltk.sentiment import SentimentIntensityAnalyzer
 
 # Ensure VADER lexicon is available (safe call)
 try:
-    nltk.data.find('sentiment/vader_lexicon.zip')
+    nltk.data.find("sentiment/vader_lexicon.zip")
 except LookupError:
     try:
-        nltk.download('vader_lexicon')
+        nltk.download("vader_lexicon")
     except Exception:
         pass
 
@@ -28,55 +26,52 @@ load_dotenv()
 OPENAI_KEY = os.getenv("OPENAI_API_KEY")
 client = OpenAI(api_key=OPENAI_KEY)
 
+# HuggingFace pipeline for sentiment
 hf_sentiment = pipeline("sentiment-analysis")
 
 # Prepare VADER analyzer
 _vader = SentimentIntensityAnalyzer()
 
 
-### 1. get recent close price data (from first part; kept)
+# --------------------------------------------------------------
+# Price helpers
 def get_close_prices(ticker, months=3):
     """
-    get close price from yahoo finance using yfinance
-    return only close price
+    Get recent close prices from Yahoo Finance using yfinance.
+
+    Returns a pandas Series of close prices or None if data is empty.
     """
     end_date = dt.date.today()
-    # use 30 days * month for simple estimate
+    # Simple estimate: 30 days per month
     start_date = end_date - dt.timedelta(days=months * 30)
 
-    # download price data
     data = yf.download(
         ticker,
         start=start_date,
         end=end_date,
-        progress=False
+        progress=False,
     )
 
-    # if no data, return none
     if data.empty:
         return None
 
-    # return only close price column
     return data["Close"]
 
 
-### 2. check trend based on price change (from first part; kept)
 def classify_trend(close_series):
     """
-    look at first price and last price
-    check if rising / falling / flat
-    and return percent change
+    Look at first and last price.
+    Decide if the stock is Rising / Falling / Stagnant.
+    Returns (label, percent_change).
     """
     if close_series is None or len(close_series) < 2:
-        return "unknown", 0.0
+        return "Unknown", 0.0
 
     first_price = float(close_series.iloc[0])
     last_price = float(close_series.iloc[-1])
 
-    # percent change
     pct_change = (last_price - first_price) / first_price * 100
 
-    # simple rule to decide trend
     if pct_change > 5:
         label = "Rising"
     elif pct_change < -5:
@@ -88,39 +83,31 @@ def classify_trend(close_series):
 
 
 # --------------------------------------------------------------
-# Load free Yahoo Finance News API
+# Yahoo Finance news
 def get_yahoo_news(ticker, limit=5):
     """
     Given a stock ticker (like 'AAPL' or 'TSLA'), fetch the most recent
-    news headlines from Yahoo Finance. Return a list of dictionaries
-    with the article title and URL.
+    news headlines from Yahoo Finance. Returns a list of dicts
+    with keys 'title' and 'url'.
     """
-
-    # Unofficial Yahoo Finance search endpoint.
     url = f"https://query2.finance.yahoo.com/v1/finance/search?q={ticker}"
 
-    # AI: Yahoo sometimes blocks requests that don't look like real browsers, adding a User-Agent makes Yahoo accept the request
+    # Yahoo sometimes blocks non-browser requests; User-Agent helps
     headers = {"User-Agent": "Mozilla/5.0"}
 
-    # Send the get request to Yahoo Finance and store the response as a dictionary
     r = requests.get(url, headers=headers)
     data = r.json()
 
-    # Store Yahoo's news section, which has multiple articles, in a list
     items = data.get("news", [])
-
     cleaned = []
 
-    # Loop through each returned news item
     for item in items:
-        title = item.get("title")    # article headline
-        link = item.get("link")      # link to the full article
+        title = item.get("title")
+        link = item.get("link")
 
-        # We only keep items that have both a title and a link
         if title and link:
             cleaned.append({"title": title, "url": link})
 
-        # Stop once we've collected the desired number of articles
         if len(cleaned) == limit:
             break
 
@@ -128,188 +115,152 @@ def get_yahoo_news(ticker, limit=5):
 
 
 # --------------------------------------------------------------
-# Extract full article
+# Article text extraction
 def get_article_text(url):
-
-    # Download and parse the article using the newspaper library
+    """
+    Try to download and parse an article given its URL.
+    Returns the article text or None if extraction fails.
+    """
     try:
-        article = Article(url, language='en')
+        article = Article(url, language="en")
         article.download()
         article.parse()
 
-        # Reject extremely short texts, since that most likely means the extraction failed
         if len(article.text) < 50:
             return None
 
-        # Return the extracted article text
         return article.text
-
-    # If an error occurs, return None
-    except:
+    except Exception:
         return None
-    
+
 
 # --------------------------------------------------------------
-# Hugging Face Sentiment Analysis
-def hf_score(text):
+# Hugging Face sentiment
+def hf_score(text, chunk_size=400):
+    """
+    Run HuggingFace sentiment on the full text by splitting into chunks.
+
+    Returns a dict:
+        {
+            "label": "Positive" | "Negative" | "Neutral",
+            "score": abs(average_numeric),
+            "numeric": average_numeric  # between -1 and 1
+        }
+    """
     try:
-        # AI: Run the model on the first 500 characters, since there is a token limit
-        result = hf_sentiment(text[:500])[0]
-        label = result["label"]
-        score = result["score"]
+        if not text:
+            return {"label": "Neutral", "score": 0.0, "numeric": 0.0}
 
-        # Convert the label into a numeric sentiment value
-        numeric = score if label == "POSITIVE" else -score
+        chunks = [text[i : i + chunk_size] for i in range(0, len(text), chunk_size)]
+        numeric_scores = []
 
-        # Return both the raw label/score and the numeric score
-        return {"label": label, "score": score, "numeric": numeric}
+        for ch in chunks:
+            result = hf_sentiment(ch)[0]
+            label = result["label"]
+            score = result["score"]
 
-    # If the model fails, return a neutral default
-    except:
-        return {"label": "NEUTRAL", "score": 0.0, "numeric": 0.0}
+            numeric = score if label == "Positive" else -score
+            numeric_scores.append(numeric)
+
+        avg_numeric = sum(numeric_scores) / len(numeric_scores)
+
+        if avg_numeric > 0.2:
+            final_label = "Positive"
+        elif avg_numeric < -0.2:
+            final_label = "Negative"
+        else:
+            final_label = "Neutral"
+
+        return {
+            "label": final_label,
+            "score": abs(avg_numeric),
+            "numeric": avg_numeric,
+        }
+    except Exception:
+        return {"label": "Neutral", "score": 0.0, "numeric": 0.0}
 
 
 # --------------------------------------------------------------
-# OpenAI Sentiment Analysis
-def extract_numeric_from_openai(text):
-    """
-    Extract a numeric sentiment score (between -1 and 1) from the OpenAI response.
-    """
-
-    # Look for any number inside the response text
-    match = re.search(r"(-?\d+\.\d+)|(-?\d+)", text)
-
-    # If we found a number and it falls within the score range, treat it as the score
-    if match:
-        num = float(match.group())
-        if -1.0 <= num <= 1.0:
-            return num
-
-    # If no suitable number was found, return a neutral value
-    return 0.0
-
-
+# OpenAI sentiment
 def openai_score(text):
-    # Build the prompt asking OpenAI to classify sentiment and provide a numeric score
+    """
+    Use OpenAI to classify sentiment and return (sentiment_label, numeric_score).
+
+    Score is between -1 and 1.
+    """
     prompt = (
+        "You are a financial news sentiment classifier. "
         "Classify the sentiment of this text as Positive, Neutral, or Negative. "
-        "Also provide a numeric score between -1 and 1.\n"
-        "Respond ONLY in this JSON format exactly:\n"
-        "{\"sentiment\": \"Positive|Neutral|Negative\", \"score\": <number between -1 and 1>}.\n\n"
-        + text
+        "Give a numeric score between -1 and 1, where -1 is very negative and 1 is very positive. "
+        "Respond ONLY in valid JSON with keys 'sentiment' and 'score'."
     )
 
     try:
-        # Send the request to the OpenAI API and get the model's response text
         response = client.responses.create(
             model="gpt-5-nano",
-            input=prompt
+            input=[
+                {"role": "system", "content": prompt},
+                {
+                    "role": "user",
+                    # keep under a safe size
+                    "content": text[:4000] if text else "",
+                },
+            ],
+            response_format={"type": "json_object"},
         )
-        raw = response.output_text.strip()
 
-        # Try to load JSON safely
-        try:
-            data = json.loads(raw)
-            sentiment = data.get("sentiment", "Neutral")
-            score = float(data.get("score", 0.0))
-        except:
-            sentiment = "Neutral"
-            score = 0.0
+        data = json.loads(response.output_text)
+        sentiment = data.get("sentiment", "Neutral")
+        score = float(data.get("score", 0.0))
+
+        # Hard clamp just in case
+        if score > 1:
+            score = 1.0
+        if score < -1:
+            score = -1.0
 
         return sentiment, score
 
-    # If the API call fails, return a default neutral result
-    except:
-        return "OpenAI sentiment unavailable.", 0.0
+    except Exception:
+        return "Neutral", 0.0
 
 
 # --------------------------------------------------------------
-# NLTK VADER Sentiment Analysis on news articles (full article)
+# NLTK VADER sentiment
 def nltk_vader_score(text):
     """
-    Conducts sentiment analysis using NLTK VADER on news article text (not just title).
-    Mimics the style of hf_score: returns dict with label/score/numeric.
+    Run NLTK VADER on article text.
+    Returns dict with label, score (abs), and numeric compound value.
     """
     try:
-        snippet = (text or "")[:2000]
+        snippet = text or ""
         if not snippet.strip():
-            return {"label": "NEUTRAL", "score": 0.0, "numeric": 0.0}
+            return {"label": "Neutral", "score": 0.0, "numeric": 0.0}
 
-        s = _vader.polarity_scores(snippet)
-        compound = s.get("compound", 0.0)
+        scores = _vader.polarity_scores(snippet)
+        compound = scores.get("compound", 0.0)
 
         if compound > 0.2:
-            label = "POSITIVE"
+            label = "Positive"
         elif compound < -0.2:
-            label = "NEGATIVE"
+            label = "Negative"
         else:
-            label = "NEUTRAL"
+            label = "Neutral"
 
         return {"label": label, "score": abs(compound), "numeric": compound}
     except Exception:
-        return {"label": "NEUTRAL", "score": 0.0, "numeric": 0.0}
+        return {"label": "Neutral", "score": 0.0, "numeric": 0.0}
 
 
 # --------------------------------------------------------------
-# Run Sentiment Analysis on Stock Articles
-def analyze_stock(ticker):
-    # Retrieve recent Yahoo Finance news items for the given ticker
-    articles = get_yahoo_news(ticker)
+# Combine model scores for a single article
+def combine_article_sentiment(hf, openai_num, vader):
+    """
+    Combine HF, OpenAI, and VADER numeric scores for one article.
+    Returns (label, average_score).
+    """
+    avg = (hf["numeric"] + openai_num + vader["numeric"]) / 3
 
-    # If no articles were found, return an empty list
-    if not articles:
-        print("No news found for this stock.")
-        return []
-
-    results = []
-
-    # Loop through each news article returned by Yahoo
-    for item in articles:
-        title = item["title"]
-        url = item["url"]
-
-        # Try to extract the full article text, use title if needed
-        text = get_article_text(url)
-        if not text:
-            print("Could not extract full article text. Using title only.\n")
-            text = title
-
-        # Run three sentiment systems on the text
-        hf_result = hf_score(text)
-        openai_raw, openai_num = openai_score(text)
-        nltk_result = nltk_vader_score(text)
-
-        # Store all results for this article in a dictionary
-        results.append({
-            "title": title,
-            "url": url,
-            "hf": hf_result,
-            "openai_sentiment": openai_raw,
-            "openai_num": openai_num,
-            "nltk_vader": nltk_result
-        })
-
-    # Return the list of sentiment results
-    return results
-
-
-# --------------------------------------------------------------
-# Compute Average Sentiment ( average across 3 models)
-def compute_overall_sentiment(results):
-    # Sum the numeric sentiment scores from Hugging Face
-    hf_sum = sum(r["hf"]["numeric"] for r in results)
-
-    # Sum the numeric sentiment scores from OpenAI
-    ai_sum = sum(r["openai_num"] for r in results)
-
-    # Sum the numeric sentiment scores from NLTK VADER
-    nv_sum = sum(r["nltk_vader"]["numeric"] for r in results)
-
-    # Average the three models' totals across all articles
-    # Avoid division by zero; results is guaranteed non-empty here by caller checks
-    avg = (hf_sum + ai_sum + nv_sum) / (3 * len(results))
-
-    # Decide the overall label based on the averaged score
     if avg > 0.2:
         label = "Positive"
     elif avg < -0.2:
@@ -317,77 +268,151 @@ def compute_overall_sentiment(results):
     else:
         label = "Neutral"
 
-    # Return both the label and the numeric score
     return label, avg
 
 
 # --------------------------------------------------------------
-# Extract Stock Name
+# Analyze news for a stock
+def analyze_stock(ticker):
+    """
+    Retrieve news for a ticker and run three sentiment models on each article.
+
+    Returns a list of dicts, each containing:
+        title, url, hf, openai_sentiment, openai_num,
+        nltk_vader, combined_label, combined_score
+    """
+    articles = get_yahoo_news(ticker)
+
+    if not articles:
+        print("No news found for this stock.")
+        return []
+
+    results = []
+
+    for item in articles:
+        title = item["title"]
+        url = item["url"]
+
+        text = get_article_text(url)
+        if not text:
+            print("Could not extract full article text. Using title only.")
+            text = title
+
+        hf_result = hf_score(text)
+        openai_raw, openai_num = openai_score(text)
+        nltk_result = nltk_vader_score(text)
+
+        combined_label, combined_num = combine_article_sentiment(
+            hf_result, openai_num, nltk_result
+        )
+
+        results.append(
+            {
+                "title": title,
+                "url": url,
+                "hf": hf_result,
+                "openai_sentiment": openai_raw,
+                "openai_num": openai_num,
+                "nltk_vader": nltk_result,
+                "combined_label": combined_label,
+                "combined_score": combined_num,
+            }
+        )
+
+    return results
+
+
+# --------------------------------------------------------------
+# Overall sentiment across all articles
+def compute_overall_sentiment(results):
+    """
+    Average HF + OpenAI + VADER scores across all articles.
+
+    Returns (label, average_score).
+    """
+    if not results:
+        return "Neutral", 0.0
+
+    hf_sum = sum(r["hf"]["numeric"] for r in results)
+    ai_sum = sum(r["openai_num"] for r in results)
+    nv_sum = sum(r["nltk_vader"]["numeric"] for r in results)
+
+    avg = (hf_sum + ai_sum + nv_sum) / (3 * len(results))
+
+    if avg > 0.2:
+        label = "Positive"
+    elif avg < -0.2:
+        label = "Negative"
+    else:
+        label = "Neutral"
+
+    return label, avg
+
+
+# --------------------------------------------------------------
+# Stock metadata
 def get_stock_name(ticker):
-    # Query Yahoo Finance search endpoint for metadata
+    """
+    Look up a human readable company name from Yahoo Finance.
+    Falls back to the ticker if nothing is found.
+    """
     url = f"https://query2.finance.yahoo.com/v1/finance/search?q={ticker}"
     headers = {"User-Agent": "Mozilla/5.0"}
 
     r = requests.get(url, headers=headers).json()
-
-    # Yahoo puts company info under "quotes"
     quotes = r.get("quotes", [])
 
-    # Return the ticker if no name found
     if not quotes:
         return ticker
 
-    # Return the short company name if available
     return quotes[0].get("shortname", ticker)
 
 
 # --------------------------------------------------------------
-# Main program
+# Main
 def main():
-    # Ask the user for a stock ticker and standardize formatting
+    """
+    Simple command line entry point for testing without Flask.
+    """
     ticker = input("Enter a stock symbol (e.g., AAPL, TSLA): ").upper().strip()
 
-    # 1) Price trend from close prices
     close_prices = get_close_prices(ticker, months=3)
     trend_label, pct_change = classify_trend(close_prices)
 
-    # 2) Fetch news and run all sentiment analysis steps
     results = analyze_stock(ticker)
-
-    # Print stock name and ticker
     stock_name = get_stock_name(ticker)
+
     print("---------------------------------------")
     print(f"Stock: {stock_name} ({ticker})")
     print(f"Price trend (3 months): {trend_label} ({pct_change:.2f}%)")
     print("---------------------------------------")
 
-    # Print each article’s individual sentiment results
     for entry in results:
         print("Title:", entry["title"])
         print("URL:", entry["url"])
 
-        # Hugging Face
         hf_label = entry["hf"]["label"].capitalize()
         hf_num = round(entry["hf"]["numeric"], 3)
-        print(f"Hugging Face Sentiment: {hf_label} ({hf_num})")
+        print(f"HuggingFace: {hf_label} ({hf_num})")
 
-        # OpenAI
         ai_raw = entry["openai_sentiment"]
         ai_num = round(entry["openai_num"], 3)
-        print(f"OpenAI Sentiment: {ai_raw} ({ai_num})")
+        print(f"OpenAI: {ai_raw} ({ai_num})")
 
-        # NLTK VADER on article text
         nv = entry["nltk_vader"]
         nv_label = nv["label"].capitalize()
         nv_num = round(nv["numeric"], 3)
         print(f"NLTK VADER: {nv_label} ({nv_num})")
 
+        combined = entry["combined_label"]
+        combined_score = round(entry["combined_score"], 3)
+        print(f"Combined: {combined} ({combined_score})")
+
         print("---------------------------------------")
 
-    # Compute the combined final sentiment across all articles (3-model average)
     if results:
         label, avg = compute_overall_sentiment(results)
-        print(f"Overall Sentiment (HF + OpenAI + NLTK) for {ticker}: {label} ({avg:.3f})")
+        print(f"Overall sentiment for {ticker}: {label} ({avg:.3f})")
     else:
         print("No results to summarize.")
 

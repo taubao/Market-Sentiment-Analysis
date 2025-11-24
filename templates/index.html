@@ -6,19 +6,30 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
 </head>
 <body>
-    <div class="container">
-        <div class="card">
-            <h1>Stock News Sentiment</h1>
-            <p class="subtitle">
-                Enter a stock symbol to see recent news sentiment and price trend.
-            </p>
+<div class="container">
+    <div class="card">
+        <h1>Stock News Sentiment</h1>
+        <p class="subtitle">
+            Enter a stock symbol to see recent news sentiment and the 3-month price trend.
+        </p>
 
-            <form action="/analyze" method="POST" class="form">
-                <label for="ticker">Stock symbol</label>
-                <input type="text" id="ticker" name="ticker" placeholder="e.g. AAPL, TSLA" required>
-                <button type="submit" class="btn btn-primary">Analyze</button>
-            </form>
-        </div>
+        <form action="/analyze" method="POST" class="form">
+            <label for="ticker">Stock symbol</label>
+            <input
+                type="text"
+                id="ticker"
+                name="ticker"
+                placeholder="e.g. AAPL, TSLA"
+                required
+            >
+            <button type="submit" class="btn btn-primary">Analyze</button>
+
+            <p class="status-note">
+                After you click Analyze, the page may take a few seconds.
+                The app is downloading news and running three sentiment models.
+            </p>
+        </form>
     </div>
+</div>
 </body>
 </html>
