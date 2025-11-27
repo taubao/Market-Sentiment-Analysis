@@ -1,0 +1,10 @@
+requests
+yfinance
+newspaper3k
+transformers
+torch
+openai
+python-dotenv
+nltk
+beautifulsoup4
+lxml
