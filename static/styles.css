@@ -63,16 +63,19 @@ h1 {
     display: inline-block;
     border: none;
     cursor: pointer;
-    border-radius: 8px;
-    font-size: 15px;
+    border-radius: 6px;
+    font-size: 14px;
     font-weight: 600;
-    padding: 10px 18px;
+    padding: 8px 14px;
 }
 
 .btn-primary {
     background-color: #2563eb;
     color: white;
-    width: 100%;
+    display: block;
+    width: auto;
+    margin: 0 auto;
+    min-width: 140px;
 }
 
 .btn-primary:hover {
@@ -224,14 +227,15 @@ h1 {
 }
 
 .back-btn {
-    display: block;
-    width: 100%;
+    display: inline-block;
+    width: auto;
+    min-width: 140px;
     text-align: center;
     background-color: #2563eb;
     color: white !important;
-    padding: 12px 0;
-    border-radius: 8px;
-    font-size: 16px;
+    padding: 8px 14px;
+    border-radius: 6px;
+    font-size: 14px;
     font-weight: 600;
     text-decoration: none;  /* remove underline */
 }
@@ -245,4 +249,26 @@ h1 {
 .center-text {
     text-align: center;
     display: inline-block;
+}
+
+/* Sentiment coloring */
+.positive {
+    color: #16a34a; /* green-600 */
+    font-weight: 700;
+}
+
+.negative {
+    color: #ef4444; /* red-500 */
+    font-weight: 700;
+}
+
+.neutral {
+    color: #000000; /* neutral black for zero values */
+    font-weight: 700;
+}
+
+.explain-text {
+    margin-top: 8px;
+    font-size: 12px;
+    color: #6b7280;
 }

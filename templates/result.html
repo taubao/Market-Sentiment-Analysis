@@ -19,19 +19,35 @@
     <div class="summary-row">
 
         <!-- PRICE TREND (LEFT) -->
+        {% if pct_change > 0 %}
+            {% set trend_class = 'positive' %}
+        {% elif pct_change < 0 %}
+            {% set trend_class = 'negative' %}
+        {% else %}
+            {% set trend_class = 'neutral' %}
+        {% endif %}
         <div class="summary-box">
             <div class="summary-label">Price Trend (3 months)</div>
             <div class="summary-value">
-                {{ trend_label }} ({{ "%.2f"|format(pct_change) }}%)
+                {{ trend_label }} (<span class="{{ trend_class }}">{{ "%.2f"|format(pct_change) }}%</span>)
             </div>
+            <div class="explain-text">Shows percent change between the first and last closing prices over the past 3 months.</div>
         </div>
 
         <!-- OVERALL SENTIMENT (RIGHT) -->
+        {% if overall_label|lower == 'positive' %}
+            {% set overall_class = 'positive' %}
+        {% elif overall_label|lower == 'negative' %}
+            {% set overall_class = 'negative' %}
+        {% else %}
+            {% set overall_class = 'neutral' %}
+        {% endif %}
         <div class="summary-box">
             <div class="summary-label">Overall Sentiment</div>
             <div class="summary-value">
-                {{ overall_label }} ({{ "%.3f"|format(overall_score) }})
+                {{ overall_label }} (<span class="{{ overall_class }}">{{ "%.3f"|format(overall_score) }}</span>)
             </div>
+            <div class="explain-text">The average of HuggingFace, OpenAI, and NLTK VADER numeric scores across all articles. Score ranges from -1 (very negative) to 1 (very positive).</div>
         </div>
 
     </div>
@@ -48,7 +64,14 @@
 
             <p class="overall-line">
                 <strong>Sentiment:</strong>
-                {{ a.combined_label }} ({{ "%.3f"|format(a.combined_score) }})
+                {% if a.combined_label|lower == 'positive' %}
+                    {% set comb_class = 'positive' %}
+                {% elif a.combined_label|lower == 'negative' %}
+                    {% set comb_class = 'negative' %}
+                {% else %}
+                    {% set comb_class = 'neutral' %}
+                {% endif %}
+                {{ a.combined_label }} (<span class="{{ comb_class }}">{{ "%.3f"|format(a.combined_score) }}</span>)
 
                 <button class="details-btn" onclick="toggleDetails(this)">
                     More details ▼
@@ -62,21 +85,42 @@
                     <div class="model-box">
                         <div class="model-title">HuggingFace</div>
                         <div class="model-value">
-                            {{ a.hf.label }} ({{ "%.3f"|format(a.hf.numeric) }})
+                            {% if a.hf.label|lower == 'positive' %}
+                                {% set hf_class = 'positive' %}
+                            {% elif a.hf.label|lower == 'negative' %}
+                                {% set hf_class = 'negative' %}
+                            {% else %}
+                                {% set hf_class = 'neutral' %}
+                            {% endif %}
+                            {{ a.hf.label }} (<span class="{{ hf_class }}">{{ "%.3f"|format(a.hf.numeric) }}</span>)
                         </div>
                     </div>
 
                     <div class="model-box">
                         <div class="model-title">OpenAI</div>
                         <div class="model-value">
-                            {{ a.openai_sentiment }} ({{ "%.3f"|format(a.openai_num) }})
+                            {% if a.openai_sentiment|lower == 'positive' %}
+                                {% set ai_class = 'positive' %}
+                            {% elif a.openai_sentiment|lower == 'negative' %}
+                                {% set ai_class = 'negative' %}
+                            {% else %}
+                                {% set ai_class = 'neutral' %}
+                            {% endif %}
+                            {{ a.openai_sentiment }} (<span class="{{ ai_class }}">{{ "%.3f"|format(a.openai_num) }}</span>)
                         </div>
                     </div>
 
                     <div class="model-box">
                         <div class="model-title">NLTK VADER</div>
                         <div class="model-value">
-                            {{ a.nltk_vader.label }} ({{ "%.3f"|format(a.nltk_vader.numeric) }})
+                            {% if a.nltk_vader.label|lower == 'positive' %}
+                                {% set nv_class = 'positive' %}
+                            {% elif a.nltk_vader.label|lower == 'negative' %}
+                                {% set nv_class = 'negative' %}
+                            {% else %}
+                                {% set nv_class = 'neutral' %}
+                            {% endif %}
+                            {{ a.nltk_vader.label }} (<span class="{{ nv_class }}">{{ "%.3f"|format(a.nltk_vader.numeric) }}</span>)
                         </div>
                     </div>
 
