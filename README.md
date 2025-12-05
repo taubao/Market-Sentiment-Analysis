@@ -1,4 +1,6 @@
-# Stock News Sentiment Analyzer 
+# Stock Sentiment Analyzer
+Evaluates market sentiment of desired stocks using recent news articles.
+
 Program by Tauria and Grace. 
 
 ## Table of Contents
@@ -7,7 +9,7 @@ Program by Tauria and Grace.
 - [Running the Web App](#running-the-web-app)
   - [How to Use the App](#how-to-use-the-app)
 - [Implementation](#implementation)
-  - [How Sentiment Classification Works](how-sentiment-classification-works)
+  - [How Sentiment Classification Works](#how-sentiment-classification-works)
 - [Results](#results)
 - [Project Evolution](#project-evolution)
 - [Project Structure](#project-structure)
@@ -122,25 +124,25 @@ http://127.0.0.1:5000
 
 Below is the general flow the app follows:
 
-## Implementation Information
-
-Below is the general flow the app follows:
-
 ### Step 1: User enters a stock ticker
 The home page shows a form where the user types in a stock ticker. After they submit it, the program uses that ticker to start the analysis.
+
 
 ### Step 2: Fetch stock price data
 The app uses `yfinance` to download the last three months of closing prices.  
 
-It compares the first and last prices to decide whether the stock has been **rising**, **falling**, or **stagnant** during that period.
+It compares the first and last prices to decide whether the stock has been rising, falling, or stagnant during that period.
+
 
 ### Step 3: Pull Yahoo Finance News
-The app sends a request to the Yahoo Finance Search API to get recent news articles related to the ticker.
+The app sends a request to the Yahoo Finance Search API to get recent news articles related to the ticker. The app analyzes five of the most recent articles returned by the Yahoo Finance Search API.
+
 
 ### Step 4: Extract article text
 The app downloads and reads the full text of each article using `newspaper3k`.
 
 If it cannot get the full text, it uses the article title instead.
+
 
 ### Step 5: Run three sentiment models
 Each article is analyzed using three different tools:
@@ -150,6 +152,21 @@ Each article is analyzed using three different tools:
 - NLTK VADER  
 
 Each tool gives a score between –1 and 1, representing negative to positive sentiment.
+
+#### Note on Text Length and Token Limits
+
+- **HuggingFace model:**  
+  The article text is split into 400-character chunks. Each chunk is analyzed separately, and the scores are averaged to produce a final HuggingFace sentiment score.
+
+- **OpenAI model:**  
+  Only the first 4000 characters of each article are sent to the model. This prevents exceeding token limits and ensures consistent JSON output.
+
+- **NLTK VADER:**  
+  VADER processes the full text when it is available.
+
+
+These constraints ensure each model runs reliably without exceeding length or token limits.
+
 
 ### Step 6: Combine the scores
 The app averages the three scores for each article to assign a final label (Positive, Neutral, or Negative).  
