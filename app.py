@@ -1,5 +1,5 @@
 from flask import Flask, render_template, request
-from sentiment import (
+from analysis import (
     get_close_prices,
     classify_trend,
     analyze_stock,

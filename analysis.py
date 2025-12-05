@@ -11,14 +11,13 @@ from dotenv import load_dotenv
 import nltk
 from nltk.sentiment import SentimentIntensityAnalyzer
 
-# Ensure VADER lexicon is available (safe call)
+# Ensure VADER lexicon is available
 try:
     nltk.data.find("sentiment/vader_lexicon.zip")
 except LookupError:
-    try:
-        nltk.download("vader_lexicon")
-    except Exception:
-        pass
+    nltk.download("vader_lexicon")
+    nltk.data.find("sentiment/vader_lexicon.zip")
+
 
 # --------------------------------------------------------------
 # Load API keys
