@@ -112,10 +112,11 @@ http://127.0.0.1:5000
 
 ### How to use the app
 ![alt text](images/homepage.png)
-1. Enter a stock ticker (ex: AAPL, TSLA, MSFT)
+
+1. Enter a stock ticker
 2. Click Analyze
 3. View results
-4. click Search another stock to run again
+4. Click Search another stock to run again
 
 ## Implementation
 
@@ -164,11 +165,12 @@ The final sentiment label uses the following thresholds:
 
 
 ## Results
-![alt text](images/results.png)
 
 The program shows a summary of the stock’s recent news sentiment. At the top of the results page, the 3-month price trend and the overall sentiment score across all models are displayed.
 
 Below that, the app lists five recent news articles pulled from Yahoo Finance. Each article card shows the title, its link, and a combined sentiment score for that article. If the user wants more detail, they can click “More details” to expand a small section that displays the individual scores from HuggingFace, OpenAI, and VADER. If desired, the user can click the “Search another stock” button to be taken back to the input page.
+
+![alt text](images/results.png)
 
 
 ## Project Evolution
