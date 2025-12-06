@@ -28,14 +28,13 @@ def analyze():
     if not ticker:
         return render_template("error.html", message="Please enter a stock symbol.")
 
-    # 1) Price trend
+    # Price trend
     close_prices = get_close_prices(ticker, months=3)
     trend_label, pct_change = classify_trend(close_prices)
 
-    # 2) News + sentiment
     results = analyze_stock(ticker)
 
-    # If no news, show a friendly message
+    # Show a message if no news is found
     if not results:
         stock_name = get_stock_name(ticker)
         return render_template(
@@ -50,7 +49,7 @@ def analyze():
             no_news=True,
         )
 
-    # 3) Overall sentiment
+    # Overall sentiment
     overall_label, overall_score = compute_overall_sentiment(results)
 
     stock_name = get_stock_name(ticker)

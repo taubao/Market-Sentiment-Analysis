@@ -148,7 +148,7 @@ If it cannot get the full text, it uses the article title instead.
 Each article is analyzed using three different tools:
 
 - HuggingFace transformer  
-- OpenAI model (JSON output)  
+- OpenAI model
 - NLTK VADER  
 
 Each tool gives a score between –1 and 1, representing negative to positive sentiment.
