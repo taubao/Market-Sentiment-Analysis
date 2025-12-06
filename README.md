@@ -1,4 +1,4 @@
-# Stock Sentiment Analyzer
+# Market Sentiment Analyzer
 Evaluates market sentiment of desired stocks using recent news articles.
 
 Program by Tauria and Grace. 
